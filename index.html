@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Civ VI Victory Ledger</title>
+<meta name="description" content="Track a win with every Civilization VI leader, roll your next game, and get map and game mode picks for Deity.">
+<meta property="og:title" content="Civ VI Victory Ledger">
+<meta property="og:description" content="Track a win with every Civilization VI leader, roll your next game, and get map and game mode picks for Deity.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#14263a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2314263a'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11' fill='none' stroke='%23e2b45c' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: a cartographer's ledger — summary meters and the roller up top, then a grid of civ cards, each listing its leaders. */
+:root {
+  --bg: #e9f0f1;
+  --paper: #fbfdfd;
+  --ink: #14263a;
+  --muted: #586a77;
+  --line: #cbd8dd;
+  --gold: #9a6a14;
+  --gold-soft: #f4e7c6;
+  --won: #2c7650;
+  --won-soft: #dcefe3;
+  --focus: #2f6fb0;
+  --danger: #a23a2c;
+  --display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --body: "Alegreya Sans", "Gill Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1720; --paper: #142130; --ink: #e5ecf0; --muted: #93a4b1; --line: #263a4c;
+    --gold: #e2b45c; --gold-soft: #3a2e16; --won: #72c99b; --won-soft: #163427; --focus: #7fb4ea; --danger: #f08a7a;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+[hidden] { display: none !important; }
+.wrap {
+  max-width: 1180px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 40px;
+  display: grid; gap: 22px;
+}
+header { display: grid; gap: 6px; }
+.eyebrow { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 64ch; }
+.notice { font-size: 14px; color: var(--ink); background: var(--paper); border: 1px dashed var(--line); padding: 8px 12px; border-radius: 6px; }
+
+.meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.meter { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 8px; }
+.meter .label { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.meter .num { font-family: var(--display); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+.meter .num small { font-family: var(--body); font-size: 16px; color: var(--muted); font-weight: 500; }
+.bar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--won); transition: width .4s ease; }
+.meter.deity .bar i { background: var(--gold); }
+.vics { font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.vics b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.roller { background: var(--paper); border: 1px solid var(--gold); border-radius: 8px; padding: 16px 18px; display: grid; gap: 12px; }
+.roll-top { display: flex; flex-wrap: wrap; gap: 14px 24px; justify-content: space-between; align-items: flex-start; }
+.roll-res { display: grid; gap: 4px; min-width: 0; flex: 1 1 280px; }
+.roller .label { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.rr-name { font-family: var(--display); font-size: clamp(24px, 4vw, 32px); font-weight: 700; line-height: 1.15; text-wrap: balance; }
+.rr-civ { color: var(--muted); font-size: 15px; }
+.rr-why { margin: 4px 0 0; max-width: 60ch; }
+.rr-why b { color: var(--gold); }
+.rr-hint { color: var(--muted); margin: 0; }
+.rr-recs { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; margin: 8px 0 4px; max-width: 70ch; }
+.rr-recs dt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding-top: 2px; }
+.rr-recs dd { margin: 0; min-width: 0; }
+.rr-recs dd span { display: block; color: var(--muted); font-size: 14px; }
+.roll-ctl { display: grid; gap: 10px; justify-items: start; }
+.pref { display: flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.roll-btn { font: inherit; font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .06em; padding: 10px 22px; border-radius: 6px; border: none; background: var(--gold); color: var(--paper); cursor: pointer; }
+.roll-btn:disabled { opacity: .5; cursor: default; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: inherit; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip .ct { font-variant-numeric: tabular-nums; opacity: .7; margin-left: 4px; }
+.search { font: inherit; font-size: 15px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); width: min(100%, 260px); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; align-items: start; }
+.civ { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.civ.is-deity { border-color: var(--gold); }
+.civ-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.civ-head h2 { font-family: var(--display); font-size: 18px; font-weight: 700; margin: 0; letter-spacing: .02em; }
+.status { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+.status.won { color: var(--won); background: var(--won-soft); border-color: transparent; }
+.status.deity { color: var(--gold); background: var(--gold-soft); border-color: transparent; }
+
+.leader { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 10px; align-items: center; padding: 10px 14px; }
+.leader + .leader { border-top: 1px solid var(--line); }
+.leader.picked { background: var(--gold-soft); }
+.tick { width: 28px; height: 28px; border-radius: 6px; border: 1.5px solid var(--line); background: transparent; color: transparent; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.tick svg { width: 16px; height: 16px; }
+.tick[aria-pressed="true"] { background: var(--won); border-color: var(--won); color: var(--paper); }
+.leader.deity .tick[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); }
+.lname { font-weight: 500; min-width: 0; }
+.lname small { display: block; font-size: 12px; color: var(--muted); font-weight: 400; letter-spacing: .02em; }
+.lname small em { font-style: normal; color: var(--gold); }
+.more { font: inherit; font-size: 13px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 4px 2px; text-decoration: underline; text-underline-offset: 3px; }
+.more.has { color: var(--ink); }
+.picks { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+select, input, textarea { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+select.set { border-color: var(--muted); }
+.extra { grid-column: 2 / -1; display: grid; gap: 8px; }
+.ex-row { display: grid; grid-template-columns: 1fr 90px; gap: 6px; }
+.extra input, .extra textarea { width: 100%; min-width: 0; }
+.extra textarea { min-height: 56px; resize: vertical; }
+.ex-label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.aff-pick { display: flex; flex-wrap: wrap; gap: 4px; }
+.aff-pick button { font: inherit; font-size: 13px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.aff-pick button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.ex-tier { display: flex; gap: 8px; align-items: center; font-size: 14px; flex-wrap: wrap; }
+.reset-one { font: inherit; font-size: 13px; color: var(--muted); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
+.empty { color: var(--muted); padding: 24px 0; text-align: center; }
+
+.data { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; }
+.data h2 { font-family: var(--display); font-size: 18px; margin: 0; }
+.data p { margin: 0; color: var(--muted); max-width: 64ch; }
+.data-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { font: inherit; font-size: 14px; font-weight: 500; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer; }
+.btn.danger { color: var(--danger); }
+.btn.danger.armed { background: var(--danger); color: var(--paper); border-color: var(--danger); }
+footer { color: var(--muted); font-size: 13px; display: grid; gap: 4px; }
+footer p { margin: 0; max-width: 80ch; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (max-width: 480px) { .rr-recs { grid-template-columns: 1fr; gap: 2px; } .rr-recs dd { margin-bottom: 8px; } }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Civilization VI · All 50 civs</div>
+    <h1>Victory Ledger</h1>
+    <p class="sub">Tick a leader when you win with them, then record the difficulty and victory type. A civ counts as done once any of its leaders has a win, and as a Deity clear once any leader wins on Deity. Not sure who to play next? Roll for it.</p>
+    <div class="notice" id="notice" role="status" hidden></div>
+  </header>
+
+  <section class="meters" aria-label="Progress">
+    <div class="meter"><span class="label">Civs won</span><span class="num" id="m-civ">0 <small>/ 50</small></span><div class="bar"><i id="b-civ"></i></div></div>
+    <div class="meter deity"><span class="label">Civs won on Deity</span><span class="num" id="m-deity">0 <small>/ 50</small></span><div class="bar"><i id="b-deity"></i></div></div>
+    <div class="meter"><span class="label">Leaders won</span><span class="num" id="m-lead">0 <small>/ 77</small></span><div class="bar"><i id="b-lead"></i></div></div>
+  </section>
+  <div class="vics" id="vics"></div>
+
+  <section class="roller" aria-labelledby="roll-h">
+    <div class="roll-top">
+      <div class="roll-res" aria-live="polite">
+        <span class="label" id="roll-h">Next game</span>
+        <div id="roll-out"><p class="rr-hint">Roll to pick a leader you haven't won with yet.</p></div>
+      </div>
+      <div class="roll-ctl">
+        <button class="roll-btn" id="roll">Roll</button>
+        <label class="pref"><input type="checkbox" id="pref" checked> Favor my weakest victory type</label>
+      </div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="chips" role="group" aria-label="Filter civs">
+      <button class="chip" data-f="all" aria-pressed="true">All<span class="ct" id="c-all"></span></button>
+      <button class="chip" data-f="todo" aria-pressed="false">Not won yet<span class="ct" id="c-todo"></span></button>
+      <button class="chip" data-f="nodeity" aria-pressed="false">Needs Deity<span class="ct" id="c-nodeity"></span></button>
+      <button class="chip" data-f="done" aria-pressed="false">Won<span class="ct" id="c-done"></span></button>
+    </div>
+    <input class="search" id="q" type="search" placeholder="Search civ or leader" aria-label="Search civ or leader">
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <p class="empty" id="empty" hidden>No civs match this filter.</p>
+
+  <section class="data" aria-labelledby="data-h">
+    <h2 id="data-h">Your data</h2>
+    <p>Your progress is saved in this browser only. Export a backup now and then, and import it to move your ledger to another device or browser.</p>
+    <div class="data-btns">
+      <button class="btn" id="export">Export backup</button>
+      <button class="btn" id="import">Import backup</button>
+      <button class="btn danger" id="reset">Reset everything</button>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+    </div>
+  </section>
+
+  <footer>
+    <p>Leader strengths, Deity tiers, and map and game mode picks are opinions, not official data. Open a leader's Notes to change their strengths or tier.</p>
+    <p>Fan-made and unofficial. Not affiliated with or endorsed by Firaxis Games, 2K, or Take-Two Interactive. Civilization is a trademark of Take-Two Interactive Software.</p>
+  </footer>
+</div>
+
+<script>
+const CIVS = [
+  ["America", ["Teddy Roosevelt (Rough Rider)", "Teddy Roosevelt (Bull Moose)", "Abraham Lincoln"]],
+  ["Arabia", ["Saladin (Vizier)", "Saladin (Sultan)"]],
+  ["Australia", ["John Curtin"]],
+  ["Aztec", ["Montezuma"]],
+  ["Babylon", ["Hammurabi"]],
+  ["Brazil", ["Pedro II"]],
+  ["Byzantium", ["Basil II", "Theodora"]],
+  ["Canada", ["Wilfrid Laurier"]],
+  ["China", ["Qin Shi Huang (Mandate of Heaven)", "Qin Shi Huang (Unifier)", "Kublai Khan", "Wu Zetian", "Yongle"]],
+  ["Cree", ["Poundmaker"]],
+  ["Egypt", ["Cleopatra (Egyptian)", "Cleopatra (Ptolemaic)", "Ramses II"]],
+  ["England", ["Victoria (Age of Empire)", "Victoria (Age of Steam)", "Elizabeth I", "Eleanor of Aquitaine"]],
+  ["Ethiopia", ["Menelik II"]],
+  ["France", ["Catherine de Medici (Black Queen)", "Catherine de Medici (Magnificence)", "Eleanor of Aquitaine"]],
+  ["Gaul", ["Ambiorix"]],
+  ["Georgia", ["Tamar"]],
+  ["Germany", ["Frederick Barbarossa", "Ludwig II"]],
+  ["Gran Colombia", ["Simón Bolívar"]],
+  ["Greece", ["Pericles", "Gorgo"]],
+  ["Hungary", ["Matthias Corvinus"]],
+  ["Inca", ["Pachacuti"]],
+  ["India", ["Gandhi", "Chandragupta"]],
+  ["Indonesia", ["Gitarja"]],
+  ["Japan", ["Hojo Tokimune", "Tokugawa"]],
+  ["Khmer", ["Jayavarman VII"]],
+  ["Kongo", ["Mvemba a Nzinga", "Nzinga Mbande"]],
+  ["Korea", ["Seondeok", "Sejong"]],
+  ["Macedon", ["Alexander"]],
+  ["Mali", ["Mansa Musa", "Sundiata Keita"]],
+  ["Māori", ["Kupe"]],
+  ["Mapuche", ["Lautaro"]],
+  ["Maya", ["Lady Six Sky"]],
+  ["Mongolia", ["Genghis Khan", "Kublai Khan"]],
+  ["Netherlands", ["Wilhelmina"]],
+  ["Norway", ["Harald Hardrada (Konge)", "Harald Hardrada (Varangian)"]],
+  ["Nubia", ["Amanitore"]],
+  ["Ottoman", ["Suleiman (Kanuni)", "Suleiman (Muhteşem)"]],
+  ["Persia", ["Cyrus", "Nader Shah"]],
+  ["Phoenicia", ["Dido"]],
+  ["Poland", ["Jadwiga"]],
+  ["Portugal", ["João III"]],
+  ["Rome", ["Trajan", "Julius Caesar"]],
+  ["Russia", ["Peter"]],
+  ["Scotland", ["Robert the Bruce"]],
+  ["Scythia", ["Tomyris"]],
+  ["Spain", ["Philip II"]],
+  ["Sumeria", ["Gilgamesh"]],
+  ["Sweden", ["Kristina"]],
+  ["Vietnam", ["Bà Triệu"]],
+  ["Zulu", ["Shaka"]]
+];
+const DIFFS = ["Settler", "Chieftain", "Warlord", "Prince", "King", "Emperor", "Immortal", "Deity"];
+const VICS = ["Science", "Culture", "Domination", "Religious", "Diplomatic", "Score"];
+const ROLL_TYPES = ["Science", "Culture", "Domination", "Religious", "Diplomatic"];
+
+// Default strengths: the victory types each leader suits, strongest first. Players can override these.
+const AFF = {
+  "Teddy Roosevelt (Rough Rider)": ["Culture", "Domination"],
+  "Teddy Roosevelt (Bull Moose)": ["Science", "Culture"],
+  "Abraham Lincoln": ["Domination"],
+  "Saladin (Vizier)": ["Religious", "Science"],
+  "Saladin (Sultan)": ["Religious", "Domination"],
+  "John Curtin": ["Science", "Culture"],
+  "Montezuma": ["Domination"],
+  "Hammurabi": ["Science"],
+  "Pedro II": ["Culture", "Science"],
+  "Basil II": ["Religious", "Domination"],
+  "Theodora": ["Religious", "Culture"],
+  "Wilfrid Laurier": ["Diplomatic", "Culture"],
+  "Qin Shi Huang (Mandate of Heaven)": ["Culture", "Science"],
+  "Qin Shi Huang (Unifier)": ["Domination", "Culture"],
+  "Kublai Khan": ["Diplomatic", "Science"],
+  "Wu Zetian": ["Science", "Domination"],
+  "Yongle": ["Science", "Culture"],
+  "Poundmaker": ["Diplomatic", "Culture"],
+  "Cleopatra (Egyptian)": ["Culture", "Religious"],
+  "Cleopatra (Ptolemaic)": ["Religious", "Culture"],
+  "Ramses II": ["Culture"],
+  "Victoria (Age of Empire)": ["Domination", "Science"],
+  "Victoria (Age of Steam)": ["Science", "Domination"],
+  "Elizabeth I": ["Diplomatic", "Domination"],
+  "Eleanor of Aquitaine": ["Culture"],
+  "Menelik II": ["Religious", "Culture"],
+  "Catherine de Medici (Black Queen)": ["Culture", "Domination"],
+  "Catherine de Medici (Magnificence)": ["Culture"],
+  "Ambiorix": ["Domination"],
+  "Tamar": ["Religious", "Diplomatic"],
+  "Frederick Barbarossa": ["Domination", "Science"],
+  "Ludwig II": ["Culture"],
+  "Simón Bolívar": ["Domination"],
+  "Pericles": ["Culture", "Diplomatic"],
+  "Gorgo": ["Culture", "Domination"],
+  "Matthias Corvinus": ["Domination", "Diplomatic"],
+  "Pachacuti": ["Science"],
+  "Gandhi": ["Religious"],
+  "Chandragupta": ["Domination", "Religious"],
+  "Gitarja": ["Religious"],
+  "Hojo Tokimune": ["Science", "Culture"],
+  "Tokugawa": ["Culture", "Science"],
+  "Jayavarman VII": ["Religious", "Culture"],
+  "Mvemba a Nzinga": ["Culture"],
+  "Nzinga Mbande": ["Culture"],
+  "Seondeok": ["Science"],
+  "Sejong": ["Science"],
+  "Alexander": ["Domination"],
+  "Mansa Musa": ["Religious", "Diplomatic"],
+  "Sundiata Keita": ["Culture"],
+  "Kupe": ["Culture", "Religious"],
+  "Lautaro": ["Domination"],
+  "Lady Six Sky": ["Science"],
+  "Genghis Khan": ["Domination"],
+  "Wilhelmina": ["Science", "Diplomatic"],
+  "Harald Hardrada (Konge)": ["Domination", "Religious"],
+  "Harald Hardrada (Varangian)": ["Domination"],
+  "Amanitore": ["Domination", "Science"],
+  "Suleiman (Kanuni)": ["Domination"],
+  "Suleiman (Muhteşem)": ["Domination", "Diplomatic"],
+  "Cyrus": ["Domination", "Culture"],
+  "Nader Shah": ["Domination"],
+  "Dido": ["Diplomatic", "Science"],
+  "Jadwiga": ["Religious"],
+  "João III": ["Science", "Diplomatic"],
+  "Trajan": ["Domination", "Culture"],
+  "Julius Caesar": ["Domination"],
+  "Peter": ["Religious", "Science"],
+  "Robert the Bruce": ["Science"],
+  "Tomyris": ["Domination"],
+  "Philip II": ["Religious", "Domination"],
+  "Gilgamesh": ["Domination", "Science"],
+  "Kristina": ["Culture", "Diplomatic"],
+  "Bà Triệu": ["Culture", "Domination"],
+  "Shaka": ["Domination"]
+};
+
+// Map picks. Civs whose kit depends on terrain get their own map; everyone else gets one by victory type.
+const CIV_MAP = {
+  "Phoenicia": ["Island Plates", "Cothons and coastal settling turn scattered islands into one connected empire."],
+  "Norway": ["Archipelago", "Longships raid and settle across water while land-bound AIs struggle to reach you."],
+  "Māori": ["Archipelago", "You start at sea, and lots of open ocean gives you the pick of the best islands."],
+  "Indonesia": ["Archipelago", "Kampungs and coastal faith bonuses need as much coastline as possible."],
+  "England": ["Island Plates", "Royal Navy Dockyards and settling other landmasses are your strengths."],
+  "Portugal": ["Island Plates", "Trade routes only reach coastal cities, so you want coast everywhere."],
+  "Inca": ["Highlands", "Mountains are your farmland. Terrace farms and Qhapaq Ñan need lots of them."],
+  "Khmer": ["Lakes", "Plenty of rivers and lakes for aqueducts and holy-site faith."],
+  "Netherlands": ["Lakes", "Rivers and coast feed your campus adjacencies and polders."],
+  "Canada": ["Continents", "Room to claim tundra, and water between you and the warmongers."]
+};
+const TYPE_MAP = {
+  Domination: ["Pangaea", "Every capital is reachable by land, so your army never waits on boats."],
+  Science: ["Continents", "Ocean between you and most AIs means fewer early wars while you build campuses."],
+  Culture: ["Continents", "Distance keeps you safe while wonders and great works pile up."],
+  Religious: ["Pangaea", "Missionaries and apostles can walk to every city without ships."],
+  Diplomatic: ["Continents", "A safer start lets you build favor and alliances instead of armies."]
+};
+const TYPE_MODE = {
+  Domination: ["Heroes & Legends", "Heroes like Hercules and Sun Wukong give you an early military spike that Deity AIs rarely match."],
+  Science: ["Secret Societies", "The Hermetic Order's ley lines add steady science and production on top of your campuses."],
+  Culture: ["Monopolies & Corporations", "Corporations and products turn luxury resources into a big tourism engine."],
+  Religious: ["Secret Societies", "The Voidsingers turn your faith into extra yields, and AIs use the societies poorly."],
+  Diplomatic: ["Secret Societies", "The Owls of Minerva give an extra policy slot and help with envoys and alliances."]
+};
+// Default Deity tiers. Anything not listed is mid-tier. Players can override these.
+const STRONG = new Set(["Hammurabi", "Seondeok", "Sejong", "Gilgamesh", "Lady Six Sky", "Basil II", "Simón Bolívar", "Nader Shah", "Julius Caesar", "Amanitore", "Montezuma", "Matthias Corvinus", "John Curtin"]);
+const WEAK = new Set(["Wilfrid Laurier", "Tamar", "Gandhi", "Harald Hardrada (Konge)", "Lautaro", "Poundmaker", "Catherine de Medici (Black Queen)", "Mvemba a Nzinga"]);
+const TIERS = { strong: "Strong", mid: "Mid", weak: "Weak" };
+
+const CHECK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const LEADERS = [];
+CIVS.forEach(([civ, ls]) => ls.forEach(name => LEADERS.push({ civ, name, key: slug(civ) + "--" + slug(name) })));
+const KEYS = new Set(LEADERS.map(l => l.key));
+const NAMES = new Set(LEADERS.map(l => l.name));
+
+/* ---------- state & storage ---------- */
+const STORE_KEY = "civ-victory-ledger";
+let data = blank();
+function blank() { return { version: 1, runs: {}, next: null, aff: {}, tier: {} }; }
+const rec = key => data.runs[key] || {};
+const affOf = name => data.aff[name] || AFF[name] || ROLL_TYPES;
+const tierOf = name => data.tier[name] || (STRONG.has(name) ? "strong" : WEAK.has(name) ? "weak" : "mid");
+const isDeity = r => r.won && r.diff === "Deity";
+
+let storageOk = true, saveTimer = null;
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) data = clean(JSON.parse(raw));
+  } catch (e) { storageOk = false; }
+}
+function saveNow() {
+  clearTimeout(saveTimer); saveTimer = null;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+  catch (e) {
+    if (storageOk) showNotice("This browser is blocking storage, so changes won't be kept after you close the page. Use Export backup to save your progress.");
+    storageOk = false;
+  }
+}
+function saveSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); }
+window.addEventListener("pagehide", () => { if (saveTimer) saveNow(); });
+
+// Validate anything loaded from storage or an imported file.
+function clean(input) {
+  const out = blank();
+  if (!input || typeof input !== "object") return out;
+  const str = (v, n) => typeof v === "string" ? v.slice(0, n) : "";
+  for (const [k, r] of Object.entries(input.runs || {})) {
+    if (!KEYS.has(k) || !r || typeof r !== "object") continue;
+    const c = {};
+    if (r.won === true) c.won = true;
+    if (DIFFS.includes(r.diff)) c.diff = r.diff;
+    if (VICS.includes(r.vic)) c.vic = r.vic;
+    for (const [f, n] of [["map", 120], ["turns", 6], ["notes", 4000]]) { const s = str(r[f], n); if (s) c[f] = s; }
+    if (Object.keys(c).length) out.runs[k] = c;
+  }
+  const n = input.next;
+  if (n && KEYS.has(n.key) && ROLL_TYPES.includes(n.type)) out.next = { key: n.key, type: n.type, pref: !!n.pref };
+  for (const [name, list] of Object.entries(input.aff || {})) {
+    if (!NAMES.has(name) || !Array.isArray(list)) continue;
+    const l = [...new Set(list.filter(t => ROLL_TYPES.includes(t)))];
+    if (l.length) out.aff[name] = l;
+  }
+  for (const [name, t] of Object.entries(input.tier || {})) if (NAMES.has(name) && t in TIERS) out.tier[name] = t;
+  return out;
+}
+
+/* ---------- ledger ---------- */
+const grid = document.getElementById("grid");
+grid.innerHTML = CIVS.map(([civ, ls]) => `
+  <article class="civ" data-civ="${esc(civ)}">
+    <div class="civ-head"><h2>${esc(civ)}</h2><span class="status">Open</span></div>
+    ${ls.map(name => {
+      const key = slug(civ) + "--" + slug(name);
+      return `<div class="leader" data-key="${key}" data-name="${esc(name)}">
+        <button class="tick" aria-pressed="false" aria-label="Won with ${esc(name)}">${CHECK}</button>
+        <span class="lname">${esc(name)}<small class="aff"></small></span>
+        <button class="more" aria-expanded="false" aria-controls="x-${key}">Notes</button>
+        <div class="picks">
+          <select class="diff" id="d-${key}" aria-label="Difficulty for ${esc(name)}"><option value="">Difficulty</option>${DIFFS.map(d => `<option>${d}</option>`).join("")}</select>
+          <select class="vic" id="v-${key}" aria-label="Victory type for ${esc(name)}"><option value="">Victory type</option>${VICS.map(d => `<option>${d}</option>`).join("")}</select>
+        </div>
+        <div class="extra" id="x-${key}" hidden>
+          <div class="ex-row">
+            <input class="map" id="m-${key}" placeholder="Map and settings" aria-label="Map and settings for ${esc(name)}">
+            <input class="turns" id="t-${key}" inputmode="numeric" placeholder="Turn" aria-label="Winning turn for ${esc(name)}">
+          </div>
+          <textarea class="notes" id="n-${key}" placeholder="Notes: opening, key wonders, what went wrong" aria-label="Notes for ${esc(name)}"></textarea>
+          <span class="ex-label">Strengths</span>
+          <div class="aff-pick" role="group" aria-label="Strengths for ${esc(name)}">${ROLL_TYPES.map(t => `<button data-t="${t}" aria-pressed="false">${t}</button>`).join("")}</div>
+          <label class="ex-tier">Deity tier
+            <select class="tier" id="r-${key}"><option value="strong">Strong</option><option value="mid">Mid</option><option value="weak">Weak</option></select>
+          </label>
+          <button class="reset-one">Restore default strengths and tier</button>
+        </div>
+      </div>`;
+    }).join("")}
+  </article>`).join("");
+
+function paintRow(row) {
+  const key = row.dataset.key, name = row.dataset.name, r = rec(key);
+  row.querySelector(".tick").setAttribute("aria-pressed", r.won ? "true" : "false");
+  row.classList.toggle("deity", isDeity(r));
+  const fields = { diff: r.diff || "", vic: r.vic || "", map: r.map || "", turns: r.turns || "", notes: r.notes || "", tier: tierOf(name) };
+  for (const [cls, val] of Object.entries(fields)) {
+    const el = row.querySelector("." + cls);
+    if (document.activeElement !== el && el.value !== val) el.value = val;
+    if (cls === "diff" || cls === "vic") el.classList.toggle("set", !!val);
+  }
+  const aff = affOf(name);
+  row.querySelectorAll(".aff-pick button").forEach(b => b.setAttribute("aria-pressed", String(aff.includes(b.dataset.t))));
+  const custom = data.aff[name] || data.tier[name];
+  row.querySelector(".aff").innerHTML = esc(aff.join(" · ")) + (custom ? " <em>· edited</em>" : "");
+  row.querySelector(".more").classList.toggle("has", !!(r.map || r.turns || r.notes));
+}
+
+function civStatus(civ) {
+  const recs = LEADERS.filter(l => l.civ === civ).map(l => rec(l.key));
+  if (recs.some(isDeity)) return "deity";
+  if (recs.some(r => r.won)) return "won";
+  return "open";
+}
+
+function paintAll() {
+  document.querySelectorAll(".leader").forEach(paintRow);
+  let civWon = 0, civDeity = 0;
+  const counts = { all: 0, todo: 0, nodeity: 0, done: 0 };
+  document.querySelectorAll(".civ").forEach(card => {
+    const st = civStatus(card.dataset.civ);
+    const chip = card.querySelector(".status");
+    if (st === "deity") { civWon++; civDeity++; chip.className = "status deity"; chip.textContent = "Deity clear"; }
+    else if (st === "won") {
+      civWon++;
+      const best = LEADERS.filter(l => l.civ === card.dataset.civ).map(l => rec(l.key)).filter(r => r.won)
+        .map(r => r.diff).filter(Boolean).sort((a, b) => DIFFS.indexOf(b) - DIFFS.indexOf(a))[0];
+      chip.className = "status won"; chip.textContent = best ? "Won · " + best : "Won";
+    } else { chip.className = "status"; chip.textContent = "Open"; }
+    card.classList.toggle("is-deity", st === "deity");
+    card.dataset.st = st;
+    counts.all++;
+    if (st === "open") counts.todo++; else counts.done++;
+    if (st !== "deity") counts.nodeity++;
+  });
+  const leadWon = LEADERS.filter(l => rec(l.key).won).length;
+  setMeter("civ", civWon, CIVS.length); setMeter("deity", civDeity, CIVS.length); setMeter("lead", leadWon, LEADERS.length);
+  for (const k in counts) document.getElementById("c-" + k).textContent = counts[k];
+  const vc = Object.fromEntries(VICS.map(v => [v, 0]));
+  LEADERS.forEach(l => { const r = rec(l.key); if (r.won && r.vic) vc[r.vic]++; });
+  document.getElementById("vics").innerHTML = "Victories by type: " + VICS.map(v => `<span>${v} <b>${vc[v]}</b></span>`).join("");
+  paintRoll();
+  applyFilter();
+}
+function setMeter(id, n, total) {
+  document.getElementById("m-" + id).innerHTML = `${n} <small>/ ${total}</small>`;
+  document.getElementById("b-" + id).style.width = (100 * n / total) + "%";
+}
+
+let filter = "all";
+function applyFilter() {
+  const q = slug(document.getElementById("q").value);
+  let shown = 0;
+  document.querySelectorAll(".civ").forEach(card => {
+    const st = card.dataset.st;
+    let ok = filter === "all" || (filter === "todo" && st === "open") || (filter === "nodeity" && st !== "deity") || (filter === "done" && st !== "open");
+    if (ok && q) ok = slug(card.dataset.civ).includes(q) || [...card.querySelectorAll(".leader")].some(n => slug(n.dataset.name).includes(q));
+    card.hidden = !ok;
+    if (ok) shown++;
+  });
+  document.getElementById("empty").hidden = shown > 0;
+}
+
+function edit(key, patch) {
+  const r = { ...rec(key), ...patch };
+  for (const k of Object.keys(r)) if (r[k] === "" || r[k] === false) delete r[k];
+  if (Object.keys(r).length) data.runs[key] = r; else delete data.runs[key];
+  if (data.next && data.next.key === key && r.won) data.next = null;
+  paintAll();
+  saveSoon();
+}
+
+grid.addEventListener("click", e => {
+  const row = e.target.closest(".leader"); if (!row) return;
+  const key = row.dataset.key, name = row.dataset.name;
+  if (e.target.closest(".tick")) edit(key, { won: !rec(key).won });
+  else if (e.target.closest(".more")) {
+    const ex = row.querySelector(".extra"); ex.hidden = !ex.hidden;
+    e.target.closest(".more").setAttribute("aria-expanded", String(!ex.hidden));
+  } else if (e.target.closest(".aff-pick button")) {
+    const t = e.target.closest("button").dataset.t;
+    let list = [...affOf(name)];
+    list = list.includes(t) ? list.filter(x => x !== t) : [...list, t];
+    if (!list.length) return showNotice("Every leader needs at least one strength.");
+    const def = AFF[name] || [];
+    if (list.length === def.length && list.every(x => def.includes(x))) delete data.aff[name]; else data.aff[name] = list;
+    paintAll(); saveSoon();
+  } else if (e.target.closest(".reset-one")) {
+    delete data.aff[name]; delete data.tier[name];
+    paintAll(); saveSoon();
+  }
+});
+grid.addEventListener("change", e => {
+  const row = e.target.closest(".leader"); if (!row) return;
+  const key = row.dataset.key, name = row.dataset.name;
+  if (e.target.matches(".diff")) edit(key, { diff: e.target.value, ...(e.target.value ? { won: true } : {}) });
+  if (e.target.matches(".vic")) edit(key, { vic: e.target.value, ...(e.target.value ? { won: true } : {}) });
+  if (e.target.matches(".tier")) {
+    const def = STRONG.has(name) ? "strong" : WEAK.has(name) ? "weak" : "mid";
+    if (e.target.value === def) delete data.tier[name]; else data.tier[name] = e.target.value;
+    paintAll(); saveSoon();
+  }
+});
+grid.addEventListener("input", e => {
+  const row = e.target.closest(".leader"); if (!row) return;
+  const key = row.dataset.key;
+  for (const f of ["map", "turns", "notes"]) if (e.target.matches("." + f)) {
+    const r = { ...rec(key), [f]: e.target.value };
+    if (!e.target.value) delete r[f];
+    if (Object.keys(r).length) data.runs[key] = r; else delete data.runs[key];
+    row.querySelector(".more").classList.toggle("has", !!(r.map || r.turns || r.notes));
+    saveSoon();
+  }
+});
+document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+  filter = c.dataset.f;
+  document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c)));
+  applyFilter();
+}));
+document.getElementById("q").addEventListener("input", applyFilter);
+
+let noticeTimer = null;
+function showNotice(t, ms) {
+  const n = document.getElementById("notice"); n.textContent = t; n.hidden = false;
+  clearTimeout(noticeTimer);
+  if (ms) noticeTimer = setTimeout(() => { n.hidden = true; }, ms);
+}
+
+/* ---------- next-game roller ---------- */
+function typeCounts() {
+  const c = Object.fromEntries(ROLL_TYPES.map(t => [t, 0]));
+  LEADERS.forEach(l => { const r = rec(l.key); if (r.won && r.vic in c) c[r.vic]++; });
+  return c;
+}
+function pickType(l, counts, pref) {
+  const types = affOf(l.name);
+  if (!pref) return types[0];
+  return types.reduce((best, t) => counts[t] < counts[best] ? t : best, types[0]);
+}
+const plural = (n, w) => `${n} ${w} win${n === 1 ? "" : "s"}`;
+function recommendMap(l, type) { const [map, why] = CIV_MAP[l.civ] || TYPE_MAP[type]; return { map, why }; }
+function recommendMode(l, type) {
+  const [mode, why] = TYPE_MODE[type], tier = tierOf(l.name);
+  if (tier === "strong") return { verdict: "Skip it", mode, why: `${l.name} is already one of the strongest Deity picks. Play it straight for a clean win.` };
+  if (tier === "weak") return { verdict: "Worth adding", mode, why: `${l.name} is one of the tougher Deity picks, so the extra help is worth it. ${why}` };
+  return { verdict: "Optional", mode, why: `${l.name} can win without it. Add it if you want an easier ride. ${why}` };
+}
+
+function paintRoll() {
+  const out = document.getElementById("roll-out");
+  document.querySelectorAll(".leader.picked").forEach(r => r.classList.remove("picked"));
+  const next = data.next;
+  const l = next && LEADERS.find(x => x.key === next.key);
+  const left = LEADERS.filter(x => !rec(x.key).won).length;
+  document.getElementById("roll").disabled = left === 0;
+  if (!l || rec(l.key).won) {
+    out.innerHTML = left ? `<p class="rr-hint">Roll to pick a leader you haven't won with yet. ${left} left to choose from.</p>`
+                         : `<p class="rr-hint">You've won with every leader. Time to chase Deity clears.</p>`;
+    return;
+  }
+  const counts = typeCounts();
+  const min = Math.min(...ROLL_TYPES.map(t => counts[t]));
+  const t = next.type, c = counts[t];
+  const why = next.pref
+    ? (c === min ? `You have ${plural(c, t)}, the fewest of any victory type.` : `You have ${plural(c, t)}, and it's one of this leader's strengths.`)
+    : `${t} is this leader's strongest path.`;
+  const m = recommendMap(l, t), g = recommendMode(l, t);
+  out.innerHTML = `<div class="rr-name">${esc(l.name)}</div>
+    <div class="rr-civ">${esc(l.civ)} · Strengths: ${esc(affOf(l.name).join(", "))}</div>
+    <p class="rr-why">Aim for a <b>${t}</b> victory. ${why}</p>
+    <dl class="rr-recs">
+      <dt>Map</dt><dd><b>${esc(m.map)}</b><span>${esc(m.why)}</span></dd>
+      <dt>Game mode</dt><dd><b>${esc(g.verdict)}: ${esc(g.mode)}</b><span>${esc(g.why)}</span></dd>
+    </dl>
+    <div><button class="more" id="goto">Show in ledger</button></div>`;
+  document.querySelectorAll(`.leader[data-key="${l.key}"]`).forEach(r => r.classList.add("picked"));
+}
+
+function rollOnce() {
+  const pool = LEADERS.filter(l => !rec(l.key).won);
+  if (!pool.length) return null;
+  const pref = document.getElementById("pref").checked;
+  const counts = typeCounts();
+  const maxC = Math.max(...ROLL_TYPES.map(t => counts[t]));
+  const weights = pool.map(l => pref ? (1 + maxC - counts[pickType(l, counts, true)]) ** 2 : 1);
+  let x = Math.random() * weights.reduce((a, b) => a + b, 0), i = 0;
+  while (x >= weights[i] && i < pool.length - 1) { x -= weights[i]; i++; }
+  return { key: pool[i].key, type: pickType(pool[i], counts, pref), pref };
+}
+
+document.getElementById("roll").addEventListener("click", () => {
+  const pick = rollOnce(); if (!pick) return;
+  const btn = document.getElementById("roll");
+  const finish = () => { data.next = pick; paintRoll(); btn.disabled = false; saveNow(); };
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return finish();
+  btn.disabled = true;
+  const pool = LEADERS.filter(l => !rec(l.key).won);
+  const out = document.getElementById("roll-out");
+  let n = 0;
+  const spin = setInterval(() => {
+    const l = pool[Math.floor(Math.random() * pool.length)];
+    out.innerHTML = `<div class="rr-name">${esc(l.name)}</div><div class="rr-civ">${esc(l.civ)}</div>`;
+    if (++n >= 12) { clearInterval(spin); finish(); }
+  }, 55);
+});
+document.getElementById("roll-out").addEventListener("click", e => {
+  if (!e.target.closest("#goto") || !data.next) return;
+  filter = "all"; document.getElementById("q").value = "";
+  document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.f === "all")));
+  applyFilter();
+  const row = document.querySelector(`.leader[data-key="${data.next.key}"]`);
+  row.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+});
+
+/* ---------- backup, restore, reset ---------- */
+document.getElementById("export").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({ app: "civ-victory-ledger", exportedAt: new Date().toISOString(), ...data }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `civ-ledger-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  showNotice("Backup downloaded.", 4000);
+});
+const fileIn = document.getElementById("import-file");
+document.getElementById("import").addEventListener("click", () => fileIn.click());
+fileIn.addEventListener("change", async () => {
+  const f = fileIn.files[0]; fileIn.value = "";
+  if (!f) return;
+  try {
+    const parsed = JSON.parse(await f.text());
+    if (!parsed || typeof parsed !== "object" || typeof parsed.runs !== "object") throw new Error("shape");
+    data = clean(parsed);
+    saveNow(); paintAll();
+    const n = Object.values(data.runs).filter(r => r.won).length;
+    showNotice(`Backup imported. ${n} win${n === 1 ? "" : "s"} restored.`, 5000);
+  } catch (e) {
+    showNotice("That file isn't a Victory Ledger backup. Choose a .json file made with Export backup.");
+  }
+});
+const resetBtn = document.getElementById("reset");
+let armTimer = null;
+resetBtn.addEventListener("click", () => {
+  if (!resetBtn.classList.contains("armed")) {
+    resetBtn.classList.add("armed"); resetBtn.textContent = "Click again to erase all progress";
+    armTimer = setTimeout(() => { resetBtn.classList.remove("armed"); resetBtn.textContent = "Reset everything"; }, 4000);
+    return;
+  }
+  clearTimeout(armTimer);
+  resetBtn.classList.remove("armed"); resetBtn.textContent = "Reset everything";
+  data = blank(); saveNow(); paintAll();
+  showNotice("Progress erased.", 4000);
+});
+
+load();
+if (!storageOk) showNotice("This browser is blocking storage, so changes won't be kept after you close the page. Use Export backup to save your progress.");
+paintAll();
+</script>
+</body>
+</html>
